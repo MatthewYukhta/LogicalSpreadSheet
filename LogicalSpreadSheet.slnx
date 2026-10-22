@@ -1,0 +1,6 @@
+<Solution>
+  <Project Path="../lab1_calc/lab1_calc.csproj" />
+  <Project Path="LogicalSpreadSheet.csproj">
+    <Deploy />
+  </Project>
+</Solution>
