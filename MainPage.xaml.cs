@@ -163,7 +163,7 @@ namespace LogicalSpreadSheet
             var entry = (Entry)sender;
             var row = Grid.GetRow(entry) - 1;
             var col = Grid.GetColumn(entry) - 1;
-            var cellRef = $"{(char)('A' + col)}{row + 1}";
+            var cellRef = $"{GetColumnName(col + 1)}{row + 1}";
             var content = entry.Text;
 
             if (string.IsNullOrWhiteSpace(content))
@@ -178,23 +178,23 @@ namespace LogicalSpreadSheet
 
         private void ToggleDisplayModeButton_Clicked(object sender, EventArgs e)
         {
+            displayValues = !displayValues;
             foreach (var child in grid.Children)
             {
                 if (child is Entry entry)
                 {
                     int row = Grid.GetRow(entry) - 1;
                     int col = Grid.GetColumn(entry) - 1;
-                    string cellRef = $"{(char)('A' + col)}{row + 1}";
+                    var cellRef = $"{GetColumnName(col + 1)}{row + 1}";
 
                     if (!displayValues)
                     {
                         entry.Text = values.TryGetValue(cellRef, out int val) ? val.ToString() : "0";
-                        displayValues = true;
+                        
                     }
                     else
                     {
                         entry.Text = expressions.TryGetValue(cellRef, out string expr) ? expr : "";
-                        displayValues = false;
                     }
                 }
             }
