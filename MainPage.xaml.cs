@@ -176,7 +176,7 @@ namespace LogicalSpreadSheet
             expressions[cellRef] = content;
         }
 
-        private void ToggleDisplayModeButton_Clicked(object sender, FocusEventArgs e)
+        private void ToggleDisplayModeButton_Clicked(object sender, EventArgs e)
         {
             foreach (var child in grid.Children)
             {
