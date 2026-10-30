@@ -5,6 +5,7 @@ using Microsoft.Maui.Controls.Compatibility;
 using System;
 using System.Collections.Generic;
 using System.Linq.Expressions;
+using System.Text.Json;
 using Windows.UI.WebUI;
 using CalculatorLexer = lab1_calc.lab1_calcLexer;
 using CalculatorParser = lab1_calc.lab1_calcParser;
@@ -73,7 +74,6 @@ namespace LogicalSpreadSheet
                 lab1_calcLexer lexer = new CalculatorLexer(stream);
                 CommonTokenStream tokens = new CommonTokenStream(lexer);
 
-                // Pull all IDENTIFIER tokens directly from the token stream
                 tokens.Fill();
                 return tokens.GetTokens().Where(t => t.Type == lab1_calcLexer.REFERENCE).Select(t => t.Text).Distinct().ToList();
             }
@@ -96,7 +96,6 @@ namespace LogicalSpreadSheet
         }
         private void AddColumnsAndColumnLabels()
         {
-            // Додати стовпці та підписи для стовпців
             for (int col = 0; col < CountColumn + 1; col++)
             {
                 grid.ColumnDefinitions.Add(new ColumnDefinition());
@@ -116,11 +115,9 @@ namespace LogicalSpreadSheet
         }
         private void AddRowsAndCellEntries()
         {
-            // Додати рядки, підписи для рядків та комірки
             for (int row = 0; row < CountRow; row++)
             {
                 grid.RowDefinitions.Add(new RowDefinition());
-                // Додати підпис для номера рядка
                 var label = new Label
                 {
                     Text = (row + 1).ToString(),
@@ -130,7 +127,7 @@ namespace LogicalSpreadSheet
                 Grid.SetRow(label, row + 1);
                 Grid.SetColumn(label, 0);
                 grid.Children.Add(label);
-                // Додати комірки (Entry) для вмісту
+
                 for (int col = 0; col < CountColumn; col++)
                 {
                     var entry = new Entry
@@ -189,7 +186,7 @@ namespace LogicalSpreadSheet
 
                     if (!displayValues)
                     {
-                        entry.Text = values.TryGetValue(cellRef, out int val) ? val.ToString() : "0";
+                        entry.Text = values.TryGetValue(cellRef, out int val) ? val.ToString() : "";
                         
                     }
                     else
@@ -229,13 +226,62 @@ namespace LogicalSpreadSheet
                 }
             }
         }
-        private void SaveButton_Clicked(object sender, EventArgs e)
+        private async void SaveButton_Clicked(object sender, EventArgs e)
         {
-            // Обробка кнопки "Зберегти"
+            string path = await DisplayPromptAsync("Зберегти файл", "Введіть повний шлях до файлу:", placeholder: @"C:\foldername\worksheet.json");
+
+            if (string.IsNullOrWhiteSpace(path)) return;
+
+            try
+            {
+                string json = JsonSerializer.Serialize(expressions);
+                File.WriteAllText(path, json);
+                await DisplayAlertAsync("Операцію виконано", "Таблицю успішно збережено.", "ОК");
+            }
+            catch (UnauthorizedAccessException)
+            {
+                await DisplayAlertAsync("Відмова в доступі", "Ви не маєте системних прав запису в зазначену папку.", "ОК");
+            }
+            catch (DirectoryNotFoundException)
+            {
+                await DisplayAlertAsync("Неправильний шлях", "Вказаної папки або групи папок не існує.", "ОК");
+            }
+            catch (Exception ex)
+            {
+                await DisplayAlertAsync("Помилка", "Сталась невідома помилка при зберіганні.", "ОК");
+            }
         }
-        private void ReadButton_Clicked(object sender, EventArgs e)
+        private async void OpenButton_Clicked(object sender, EventArgs e)
         {
-            // Обробка кнопки "Прочитати"
+            try
+            {
+                var customFileType = new FilePickerFileType(new Dictionary<DevicePlatform, IEnumerable<string>>{
+                {DevicePlatform.WinUI, new[]{ ".json" }}
+                    });
+
+                PickOptions options = new PickOptions
+                {
+                    PickerTitle = "Відкрити файл таблиці",
+                    FileTypes = customFileType
+                };
+
+                FileResult result = await FilePicker.Default.PickAsync(options);
+
+                if (result != null)
+                {
+                    using Stream stream = await result.OpenReadAsync();
+                    using StreamReader reader = new StreamReader(stream);
+                    string jsonContent = await reader.ReadToEndAsync();
+
+                    expressions = JsonSerializer.Deserialize<Dictionary<string, string>>(jsonContent);
+
+                    CalculateButton_Clicked(null, null);
+                }
+            }
+            catch (Exception ex)
+            {
+                await DisplayAlertAsync("Помилка відкриття", $"Не вдалось відкрити файл через таку причину: {ex.Message}", "ОК");
+            }
         }
         private async void ExitButton_Clicked(object sender, EventArgs e)
         {
@@ -247,7 +293,7 @@ namespace LogicalSpreadSheet
         }
         private async void HelpButton_Clicked(object sender, EventArgs e)
         {
-            await DisplayAlertAsync("Довідка", "Лабораторна робота 1 студента Юхти М. (НЕЗАВЕРШЕНА)\nКоди помилок: -1 = синтаксична помилка, -2 = циклічне посилання.", "OK");
+            await DisplayAlertAsync("Довідка", "Лабораторна робота 1 студента Юхти М.\nКоди помилок: -1 = синтаксична помилка, -2 = циклічне посилання.", "OK");
         }
         private void DeleteRowButton_Clicked(object sender, EventArgs e)
         {
@@ -255,10 +301,10 @@ namespace LogicalSpreadSheet
             {
                 int lastRowIndex = grid.RowDefinitions.Count - 1;
                 grid.RowDefinitions.RemoveAt(lastRowIndex);
-                grid.Children.RemoveAt(lastRowIndex * (CountColumn + 1)); // Remove label
+                grid.Children.RemoveAt(lastRowIndex * (CountColumn + 1));
                 for (int col = 0; col < CountColumn; col++)
                 {
-                    grid.Children.RemoveAt((lastRowIndex * CountColumn) + col + 1); // Remove entry
+                    grid.Children.RemoveAt((lastRowIndex * CountColumn) + col + 1);
                 }
             }
         }
@@ -268,20 +314,18 @@ namespace LogicalSpreadSheet
             {
                 int lastColumnIndex = grid.ColumnDefinitions.Count - 1;
                 grid.ColumnDefinitions.RemoveAt(lastColumnIndex);
-                grid.Children.RemoveAt(lastColumnIndex); // Remove label
+                grid.Children.RemoveAt(lastColumnIndex);
 
                 for (int row = 0; row < CountRow; row++)
                 {
-                    grid.Children.RemoveAt(row * (CountColumn + 1) + lastColumnIndex + 1); // Remove entry
+                    grid.Children.RemoveAt(row * (CountColumn + 1) + lastColumnIndex + 1);
                 }
             }
         }
         private void AddRowButton_Clicked(object sender, EventArgs e)
         {
             int newRow = grid.RowDefinitions.Count;
-            // Add a new row definition
             grid.RowDefinitions.Add(new RowDefinition());
-            // Add label for the row number
             var label = new Label
             {
                 Text = newRow.ToString(),
@@ -291,7 +335,7 @@ namespace LogicalSpreadSheet
             Grid.SetRow(label, newRow);
             Grid.SetColumn(label, 0);
             grid.Children.Add(label);
-            // Add entry cells for the new row
+
             for (int col = 0; col < CountColumn; col++)
             {
                 var entry = new Entry
@@ -309,9 +353,7 @@ namespace LogicalSpreadSheet
         private void AddColumnButton_Clicked(object sender, EventArgs e)
         {
             int newColumn = grid.ColumnDefinitions.Count;
-            // Add a new column definition
             grid.ColumnDefinitions.Add(new ColumnDefinition());
-            // Add label for the column name
             var label = new Label
             {
                 Text = GetColumnName(newColumn),
@@ -321,7 +363,7 @@ namespace LogicalSpreadSheet
             Grid.SetRow(label, 0);
             Grid.SetColumn(label, newColumn);
             grid.Children.Add(label);
-            // Add entry cells for the new column
+
             for (int row = 0; row < CountRow; row++)
             {
                 var entry = new Entry

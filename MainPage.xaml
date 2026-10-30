@@ -16,7 +16,7 @@ x:Class="LogicalSpreadSheet.MainPage">
         
         <StackLayout Orientation="Horizontal">
             <Button Text="Зберегти" Clicked="SaveButton_Clicked" />
-            <Button Text="Прочитати" Clicked="ReadButton_Clicked" />
+            <Button Text="Відкрити" Clicked="OpenButton_Clicked" />
             <Button Text="Вийти" Clicked="ExitButton_Clicked" />
             <Button Text="Змінити режим показу" Clicked="ToggleDisplayModeButton_Clicked" />
             <Button Text="Обчислити" Clicked="CalculateButton_Clicked" />
@@ -27,7 +27,6 @@ x:Class="LogicalSpreadSheet.MainPage">
             <Button Text="Додати стовпчик" Clicked="AddColumnButton_Clicked" />
         </StackLayout>
         
-        <Entry x:Name="textInput" Placeholder="Введіть текст" Grid.Row="1" Grid.ColumnSpan="2" />
         <ScrollView Grid.Row="2" Grid.ColumnSpan="2">
             <Grid x:Name="grid">
             </Grid>
