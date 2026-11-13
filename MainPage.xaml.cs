@@ -209,17 +209,15 @@ namespace LogicalSpreadSheet
             var row = Grid.GetRow(entry) - 1;
             var col = Grid.GetColumn(entry) - 1;
             var cellRef = $"{GetColumnName(col + 1)}{row + 1}";
-            if (!displayValues)
+
+            var content = entry.Text;
+            fileData.expressions[cellRef] = content;
+            if (!Title.Contains("*"))Title = Title + "*";
+            if (string.IsNullOrWhiteSpace(content))
             {
-                var content = entry.Text;
-                fileData.expressions[cellRef] = content;
-                if (!Title.Contains("*"))Title = Title + "*";
-                if (string.IsNullOrWhiteSpace(content))
-                {
-                    fileData.expressions.Remove(cellRef);
-                    fileData.values.Remove(cellRef);
-                    return;
-                }
+                fileData.expressions.Remove(cellRef);
+                fileData.values.Remove(cellRef);
+                return;
             }
         }
 
@@ -243,6 +241,7 @@ namespace LogicalSpreadSheet
                     {
                         entry.Text = fileData.expressions.TryGetValue(cellRef, out string expr) ? expr : "";
                     }
+                    entry.IsReadOnly = displayValues;
                 }
             }
         }
@@ -405,6 +404,7 @@ namespace LogicalSpreadSheet
                     fileData.expressions.Remove(cellRef);
                     fileData.values.Remove(cellRef);
                 }
+                if (!Title.Contains("*")) Title = Title + "*";
             }
         }
         private void DeleteColumnButton_Clicked(object sender, EventArgs e)
@@ -426,6 +426,7 @@ namespace LogicalSpreadSheet
                     fileData.expressions.Remove(cellRef);
                     fileData.values.Remove(cellRef);
                 }
+                if (!Title.Contains("*")) Title = Title + "*";
             }
         }
         private void AddRowButton_Clicked(object sender, EventArgs e)
@@ -458,6 +459,7 @@ namespace LogicalSpreadSheet
                     grid.Children.Add(entry);
                 }
                 ++fileData.CountRow;
+                if (!Title.Contains("*")) Title = Title + "*";
             }
         }
         private void AddColumnButton_Clicked(object sender, EventArgs e)
@@ -490,6 +492,7 @@ namespace LogicalSpreadSheet
                     grid.Children.Add(entry);
                 }
                 ++fileData.CountColumn;
+                if (!Title.Contains("*")) Title = Title + "*";
             }
         }
     }
