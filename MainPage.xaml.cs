@@ -2,10 +2,13 @@
 using lab1_calc;
 using Microsoft.Maui.Controls;
 using Microsoft.Maui.Controls.Compatibility;
+using Microsoft.Maui.Layouts;
 using System;
 using System.Collections.Generic;
 using System.Linq.Expressions;
 using System.Text.Json;
+using System.Text.RegularExpressions;
+using Windows.Foundation.Collections;
 using Windows.UI.WebUI;
 using CalculatorLexer = lab1_calc.lab1_calcLexer;
 using CalculatorParser = lab1_calc.lab1_calcParser;
@@ -15,9 +18,18 @@ namespace LogicalSpreadSheet
 {
     public partial class MainPage : ContentPage
     {
-        private Dictionary<string, string> expressions = new();
-        private Dictionary<string, int> values = new();
+        private class SpreadsheetData
+        {
+            public Dictionary<string, string> expressions { get; set; } = new();
+            public Dictionary<string, int> values { get; set; } = new();
+            public int CountColumn { get; set; } = 8;
+            public int CountRow { get; set; } = 8;
+        }
+        private SpreadsheetData fileData = new SpreadsheetData();
         private bool displayValues = false;
+        private string fileOpened = "";
+        const int MaxCountColumn = 24;
+        const int MaxCountRow = 24;
         private bool CircRefTest(string curCell, string Formula)
         {
             List<string> refs = GetCellRefs(Formula);
@@ -25,7 +37,7 @@ namespace LogicalSpreadSheet
 
             var dependencies = new Dictionary<string, List<string>>();
 
-            foreach (var (cell, formula) in expressions)
+            foreach (var (cell, formula) in fileData.expressions)
             {
                 if (cell == curCell) continue;
 
@@ -62,7 +74,31 @@ namespace LogicalSpreadSheet
 
             return false;
         }
+        private bool InvalidRefTest(string formula)
+        {
+            List<string> references = GetCellRefs(formula);
 
+            foreach (string refCell in references)
+            {
+                if (OutOfBoundsCheck(refCell))
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+        private bool OutOfBoundsCheck(string cellRef)
+        {
+            var match = Regex.Match(cellRef, @"^([A-Z]+)(\d+)$");
+            if (!match.Success) return true;
+
+            string colPart = match.Groups[1].Value;
+            string rowPart = match.Groups[2].Value;
+
+            int colIndex = GetColumnIndex(colPart);
+            int rowIndex = int.Parse(rowPart);
+            return colIndex > fileData.CountColumn || rowIndex > fileData.CountRow;
+        }
         private List<string> GetCellRefs(string formula)
         {
             if (string.IsNullOrWhiteSpace(formula))
@@ -82,8 +118,6 @@ namespace LogicalSpreadSheet
                 return new List<string>();
             }
         }
-        const int CountColumn = 20;
-        const int CountRow = 50;
         public MainPage()
         {
             InitializeComponent();
@@ -96,7 +130,7 @@ namespace LogicalSpreadSheet
         }
         private void AddColumnsAndColumnLabels()
         {
-            for (int col = 0; col < CountColumn + 1; col++)
+            for (int col = 0; col < fileData.CountColumn + 1; col++)
             {
                 grid.ColumnDefinitions.Add(new ColumnDefinition());
                 if (col > 0)
@@ -115,7 +149,11 @@ namespace LogicalSpreadSheet
         }
         private void AddRowsAndCellEntries()
         {
-            for (int row = 0; row < CountRow; row++)
+            if (grid.RowDefinitions.Count == 0)
+            {
+                grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+            }
+            for (int row = 0; row < fileData.CountRow; row++)
             {
                 grid.RowDefinitions.Add(new RowDefinition());
                 var label = new Label
@@ -128,7 +166,7 @@ namespace LogicalSpreadSheet
                 Grid.SetColumn(label, 0);
                 grid.Children.Add(label);
 
-                for (int col = 0; col < CountColumn; col++)
+                for (int col = 0; col < fileData.CountColumn; col++)
                 {
                     var entry = new Entry
                     {
@@ -155,22 +193,34 @@ namespace LogicalSpreadSheet
             }
             return columnName;
         }
+        private int GetColumnIndex(string columnName)
+        {
+            int index = 0;
+            for (int i = 0; i < columnName.Length; i++)
+            {
+                index *= 26;
+                index += (columnName[i] - 'A' + 1);
+            }
+            return index;
+        }
         private void Entry_Unfocused(object sender, FocusEventArgs e)
         {
             var entry = (Entry)sender;
             var row = Grid.GetRow(entry) - 1;
             var col = Grid.GetColumn(entry) - 1;
             var cellRef = $"{GetColumnName(col + 1)}{row + 1}";
-            var content = entry.Text;
-
-            if (string.IsNullOrWhiteSpace(content))
+            if (!displayValues)
             {
-                expressions.Remove(cellRef);
-                values.Remove(cellRef);
-                return;
+                var content = entry.Text;
+                fileData.expressions[cellRef] = content;
+                if (!Title.Contains("*"))Title = Title + "*";
+                if (string.IsNullOrWhiteSpace(content))
+                {
+                    fileData.expressions.Remove(cellRef);
+                    fileData.values.Remove(cellRef);
+                    return;
+                }
             }
-
-            expressions[cellRef] = content;
         }
 
         private void ToggleDisplayModeButton_Clicked(object sender, EventArgs e)
@@ -186,44 +236,35 @@ namespace LogicalSpreadSheet
 
                     if (!displayValues)
                     {
-                        entry.Text = values.TryGetValue(cellRef, out int val) ? val.ToString() : "";
+                        entry.Text = fileData.values.TryGetValue(cellRef, out int val) ? val.ToString() : "";
                         
                     }
                     else
                     {
-                        entry.Text = expressions.TryGetValue(cellRef, out string expr) ? expr : "";
+                        entry.Text = fileData.expressions.TryGetValue(cellRef, out string expr) ? expr : "";
                     }
                 }
             }
         }
         private void CalculateButton_Clicked(object sender, EventArgs e)
         {
-            values.Clear();
-            foreach (var (cellRef, formula) in expressions)
+            fileData.values.Clear();
+            foreach (var (cellRef, formula) in fileData.expressions)
             {
                 if (string.IsNullOrWhiteSpace(formula)) continue;
 
                 if (CircRefTest(cellRef, formula))
                 {
-                    values[cellRef] = -2;
+                    fileData.values[cellRef] = -2;
                     continue;
                 }
-                try
+                if (InvalidRefTest(formula))
                 {
-                    ICharStream stream = new AntlrInputStream(formula);
-                    lab1_calcLexer lexer = new CalculatorLexer(stream);
-                    CommonTokenStream tokens = new CommonTokenStream(lexer);
-                    lab1_calcParser parser = new CalculatorParser(tokens);
-
-                    var visitor = new CalculatorVisitor(values);
-
-                    bool resultBool = visitor.Visit(parser.compileUnit());
-                    values[cellRef] = resultBool ? 1 : 0;
+                    fileData.values[cellRef] = -3;
+                    continue;
                 }
-                catch (Exception ex)
-                {
-                    values[cellRef] = -1;
-                }
+                int result = Calculator.Evaluate(formula, fileData.values);
+                fileData.values[cellRef] = result;
             }
         }
         private async void SaveButton_Clicked(object sender, EventArgs e)
@@ -234,8 +275,17 @@ namespace LogicalSpreadSheet
 
             try
             {
-                string json = JsonSerializer.Serialize(expressions);
+                var saveData = new SpreadsheetData
+                {
+                    expressions = fileData.expressions,
+                    values = fileData.values,
+                    CountRow = fileData.CountRow,
+                    CountColumn = fileData.CountColumn
+                };
+
+                string json = JsonSerializer.Serialize(saveData, new JsonSerializerOptions { WriteIndented = true });
                 File.WriteAllText(path, json);
+                Title = path;
                 await DisplayAlertAsync("Операцію виконано", "Таблицю успішно збережено.", "ОК");
             }
             catch (UnauthorizedAccessException)
@@ -266,6 +316,7 @@ namespace LogicalSpreadSheet
                 };
 
                 FileResult result = await FilePicker.Default.PickAsync(options);
+                Title = result.FullPath;
 
                 if (result != null)
                 {
@@ -273,9 +324,41 @@ namespace LogicalSpreadSheet
                     using StreamReader reader = new StreamReader(stream);
                     string jsonContent = await reader.ReadToEndAsync();
 
-                    expressions = JsonSerializer.Deserialize<Dictionary<string, string>>(jsonContent);
+                    SpreadsheetData data = JsonSerializer.Deserialize<SpreadsheetData>(jsonContent);
 
-                    CalculateButton_Clicked(null, null);
+                    if (data != null)
+                    {
+                        grid.Children.Clear();
+                        grid.RowDefinitions.Clear();
+                        grid.ColumnDefinitions.Clear();
+
+                        fileData.CountRow = data.CountRow;
+                        fileData.CountColumn = data.CountColumn;
+                        AddRowsAndCellEntries();
+
+                        fileData.expressions = data.expressions ?? new();
+                        fileData.values = data.values ?? new();
+
+                        foreach (var child in grid.Children)
+                        {
+                            if (child is Entry entry)
+                            {
+                                int row = Grid.GetRow(entry);
+                                int col = Grid.GetColumn(entry);
+
+                                string colName = GetColumnName(col);
+                                string cellRef = $"{colName}{row}";
+
+                                if (fileData.expressions.TryGetValue(cellRef, out string formula))
+                                {
+                                    entry.Text = formula;
+                                }
+                            }
+                        }
+
+                        displayValues = false;
+                        CalculateButton_Clicked(null, null);
+                    }
                 }
             }
             catch (Exception ex)
@@ -285,7 +368,7 @@ namespace LogicalSpreadSheet
         }
         private async void ExitButton_Clicked(object sender, EventArgs e)
         {
-            bool answer = await DisplayAlertAsync("Підтвердження", "Ви дійсно хочете вийти з табличної програми?", "Так", "Ні");
+            bool answer = await DisplayAlertAsync("Підтвердження", "Ви дійсно хочете вийти з табличної програми? Переконайтесь, що зберегли таблицю перед виходом", "Так", "Ні");
             if (answer)
             {
                 System.Environment.Exit(0);
@@ -293,18 +376,34 @@ namespace LogicalSpreadSheet
         }
         private async void HelpButton_Clicked(object sender, EventArgs e)
         {
-            await DisplayAlertAsync("Довідка", "Лабораторна робота 1 студента Юхти М.\nКоди помилок: -1 = синтаксична помилка, -2 = циклічне посилання.", "OK");
+            await DisplayAlertAsync("Довідка", """
+                
+                Лабораторна робота 1 студента Юхти Матвія. Варіант 76.
+                Коди помилок: -1 = синтаксична помилка, -2 = циклічне посилання, -3 = посилання на неіснуючу комірку.
+                Доступні функції: NOT, AND, OR, MMAX, MMIN, >, <, =, inc, dec.
+                Функції вводяться без знаку = перед ними.
+                AND, OR, <=> стоять МІЖ операндами.
+
+                """, "OK");
         }
         private void DeleteRowButton_Clicked(object sender, EventArgs e)
         {
             if (grid.RowDefinitions.Count > 1)
             {
                 int lastRowIndex = grid.RowDefinitions.Count - 1;
+                var deletedCells = grid.Children
+                                       .Where(child => Grid.GetRow((BindableObject)child) == lastRowIndex)
+                                       .ToList();
+                foreach (var cell in deletedCells) { grid.Children.Remove(cell); }
                 grid.RowDefinitions.RemoveAt(lastRowIndex);
-                grid.Children.RemoveAt(lastRowIndex * (CountColumn + 1));
-                for (int col = 0; col < CountColumn; col++)
+                --fileData.CountRow;
+
+                for (int col = 1; col <= fileData.CountColumn; col++)
                 {
-                    grid.Children.RemoveAt((lastRowIndex * CountColumn) + col + 1);
+                    string colName = GetColumnName(col);
+                    string cellRef = $"{colName}{lastRowIndex}";
+                    fileData.expressions.Remove(cellRef);
+                    fileData.values.Remove(cellRef);
                 }
             }
         }
@@ -313,69 +412,84 @@ namespace LogicalSpreadSheet
             if (grid.ColumnDefinitions.Count > 1)
             {
                 int lastColumnIndex = grid.ColumnDefinitions.Count - 1;
+                var deletedCells = grid.Children
+                                       .Where(child => Grid.GetColumn((BindableObject)child) == lastColumnIndex)
+                                       .ToList();
+                foreach (var cell in deletedCells) { grid.Children.Remove(cell); }
                 grid.ColumnDefinitions.RemoveAt(lastColumnIndex);
-                grid.Children.RemoveAt(lastColumnIndex);
+                --fileData.CountColumn;
 
-                for (int row = 0; row < CountRow; row++)
+                string colName = GetColumnName(lastColumnIndex);
+                for (int row = 1; row <= fileData.CountRow; row++)
                 {
-                    grid.Children.RemoveAt(row * (CountColumn + 1) + lastColumnIndex + 1);
+                    string cellRef = $"{colName}{row}";
+                    fileData.expressions.Remove(cellRef);
+                    fileData.values.Remove(cellRef);
                 }
             }
         }
         private void AddRowButton_Clicked(object sender, EventArgs e)
         {
-            int newRow = grid.RowDefinitions.Count;
-            grid.RowDefinitions.Add(new RowDefinition());
-            var label = new Label
+            if (fileData.CountRow < MaxCountRow)
             {
-                Text = newRow.ToString(),
-                VerticalOptions = LayoutOptions.Center,
-                HorizontalOptions = LayoutOptions.Center
-            };
-            Grid.SetRow(label, newRow);
-            Grid.SetColumn(label, 0);
-            grid.Children.Add(label);
-
-            for (int col = 0; col < CountColumn; col++)
-            {
-                var entry = new Entry
+                int newRow = grid.RowDefinitions.Count;
+                grid.RowDefinitions.Add(new RowDefinition());
+                var label = new Label
                 {
-                    Text = "",
+                    Text = newRow.ToString(),
                     VerticalOptions = LayoutOptions.Center,
                     HorizontalOptions = LayoutOptions.Center
                 };
-                entry.Unfocused += Entry_Unfocused;
-                Grid.SetRow(entry, newRow);
-                Grid.SetColumn(entry, col + 1);
-                grid.Children.Add(entry);
+                Grid.SetRow(label, newRow);
+                Grid.SetColumn(label, 0);
+                grid.Children.Add(label);
+
+                for (int col = 0; col < fileData.CountColumn; col++)
+                {
+                    var entry = new Entry
+                    {
+                        Text = "",
+                        VerticalOptions = LayoutOptions.Center,
+                        HorizontalOptions = LayoutOptions.Center
+                    };
+                    entry.Unfocused += Entry_Unfocused;
+                    Grid.SetRow(entry, newRow);
+                    Grid.SetColumn(entry, col + 1);
+                    grid.Children.Add(entry);
+                }
+                ++fileData.CountRow;
             }
         }
         private void AddColumnButton_Clicked(object sender, EventArgs e)
         {
-            int newColumn = grid.ColumnDefinitions.Count;
-            grid.ColumnDefinitions.Add(new ColumnDefinition());
-            var label = new Label
+            if (fileData.CountColumn < MaxCountColumn)
             {
-                Text = GetColumnName(newColumn),
-                VerticalOptions = LayoutOptions.Center,
-                HorizontalOptions = LayoutOptions.Center
-            };
-            Grid.SetRow(label, 0);
-            Grid.SetColumn(label, newColumn);
-            grid.Children.Add(label);
-
-            for (int row = 0; row < CountRow; row++)
-            {
-                var entry = new Entry
+                int newColumn = grid.ColumnDefinitions.Count;
+                grid.ColumnDefinitions.Add(new ColumnDefinition());
+                var label = new Label
                 {
-                    Text = "",
+                    Text = GetColumnName(newColumn),
                     VerticalOptions = LayoutOptions.Center,
                     HorizontalOptions = LayoutOptions.Center
                 };
-                entry.Unfocused += Entry_Unfocused;
-                Grid.SetRow(entry, row + 1);
-                Grid.SetColumn(entry, newColumn);
-                grid.Children.Add(entry);
+                Grid.SetRow(label, 0);
+                Grid.SetColumn(label, newColumn);
+                grid.Children.Add(label);
+
+                for (int row = 0; row < fileData.CountRow; row++)
+                {
+                    var entry = new Entry
+                    {
+                        Text = "",
+                        VerticalOptions = LayoutOptions.Center,
+                        HorizontalOptions = LayoutOptions.Center
+                    };
+                    entry.Unfocused += Entry_Unfocused;
+                    Grid.SetRow(entry, row + 1);
+                    Grid.SetColumn(entry, newColumn);
+                    grid.Children.Add(entry);
+                }
+                ++fileData.CountColumn;
             }
         }
     }

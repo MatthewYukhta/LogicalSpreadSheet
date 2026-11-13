@@ -2,7 +2,7 @@
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
 xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
 xmlns:local="clr-namespace:LogicalSpreadSheet"
-x:Class="LogicalSpreadSheet.MainPage">
+x:Class="LogicalSpreadSheet.MainPage" Title="Нова електронна таблиця">
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
@@ -14,21 +14,21 @@ x:Class="LogicalSpreadSheet.MainPage">
             <ColumnDefinition Width="*" />
         </Grid.ColumnDefinitions>
         
-        <StackLayout Orientation="Horizontal">
+        <StackLayout Orientation="Horizontal" HorizontalOptions="Center">
             <Button Text="Зберегти" Clicked="SaveButton_Clicked" />
             <Button Text="Відкрити" Clicked="OpenButton_Clicked" />
             <Button Text="Вийти" Clicked="ExitButton_Clicked" />
             <Button Text="Змінити режим показу" Clicked="ToggleDisplayModeButton_Clicked" />
             <Button Text="Обчислити" Clicked="CalculateButton_Clicked" />
             <Button Text="Довідка" Clicked="HelpButton_Clicked" />
-            <Button Text="Видалити рядок" Clicked="DeleteRowButton_Clicked"/>
-            <Button Text="Видалити стовпчик" Clicked="DeleteColumnButton_Clicked" />
-            <Button Text="Додати рядок" Clicked="AddRowButton_Clicked" />
-            <Button Text="Додати стовпчик" Clicked="AddColumnButton_Clicked" />
+            <Button Text="- рядок" Clicked="DeleteRowButton_Clicked"/>
+            <Button Text="- стовпчик" Clicked="DeleteColumnButton_Clicked" />
+            <Button Text="+ рядок" Clicked="AddRowButton_Clicked" />
+            <Button Text="+ стовпчик" Clicked="AddColumnButton_Clicked" />
         </StackLayout>
         
-        <ScrollView Grid.Row="2" Grid.ColumnSpan="2">
-            <Grid x:Name="grid">
+        <ScrollView Grid.Row="2" Grid.ColumnSpan="2" Orientation="Both" HorizontalScrollBarVisibility="Default" VerticalScrollBarVisibility="Default">
+            <Grid x:Name="grid" HorizontalOptions="Start" VerticalOptions="Start">
             </Grid>
         </ScrollView>
     </Grid>
