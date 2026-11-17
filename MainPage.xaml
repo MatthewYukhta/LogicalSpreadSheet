@@ -13,19 +13,21 @@ x:Class="LogicalSpreadSheet.MainPage" Title="Нова електронна та�
             <ColumnDefinition Width="Auto" />
             <ColumnDefinition Width="*" />
         </Grid.ColumnDefinitions>
-        
-        <StackLayout Orientation="Horizontal" HorizontalOptions="Center">
-            <Button Text="Зберегти" Clicked="SaveButton_Clicked" />
-            <Button Text="Відкрити" Clicked="OpenButton_Clicked" />
-            <Button Text="Вийти" Clicked="ExitButton_Clicked" />
-            <Button Text="Змінити режим показу" Clicked="ToggleDisplayModeButton_Clicked" />
-            <Button Text="Обчислити" Clicked="CalculateButton_Clicked" />
-            <Button Text="Довідка" Clicked="HelpButton_Clicked" />
-            <Button Text="- рядок" Clicked="DeleteRowButton_Clicked"/>
-            <Button Text="- стовпчик" Clicked="DeleteColumnButton_Clicked" />
-            <Button Text="+ рядок" Clicked="AddRowButton_Clicked" />
-            <Button Text="+ стовпчик" Clicked="AddColumnButton_Clicked" />
-        </StackLayout>
+
+        <HorizontalStackLayout Grid.Row="0" Grid.ColumnSpan="2" HorizontalOptions="Center" Spacing="12" Padding="0,8">
+            <Button Text="Зберегти" Clicked="SaveButton_Clicked" BackgroundColor="#00dd00"/>
+            <Button Text="Відкрити" Clicked="OpenButton_Clicked" BackgroundColor="#dddd00"/>
+            <Button Text="Вийти" Clicked="ExitButton_Clicked" BackgroundColor="#dd0000"/>
+            <Button Text="Змінити режим показу" Clicked="ToggleDisplayModeButton_Clicked" BackgroundColor="#12abff"/>
+            <Button Text="Обчислити" Clicked="CalculateButton_Clicked" BackgroundColor="#bbbbbb"/>
+        </HorizontalStackLayout>
+        <HorizontalStackLayout Grid.Row="1" Grid.ColumnSpan="2" HorizontalOptions="Center" Spacing="12" Padding="0,8">
+            <Button Text="Довідка" Clicked="HelpButton_Clicked" BackgroundColor="#666666"/>
+            <Button Text="- рядок" Clicked="DeleteRowButton_Clicked" BackgroundColor="#dd0000"/>
+            <Button Text="- стовпчик" Clicked="DeleteColumnButton_Clicked" BackgroundColor="#dd0000"/>
+            <Button Text="+ рядок" Clicked="AddRowButton_Clicked" BackgroundColor="#00dd00"/>
+            <Button Text="+ стовпчик" Clicked="AddColumnButton_Clicked" BackgroundColor="#00dd00"/>
+        </HorizontalStackLayout>
         
         <ScrollView Grid.Row="2" Grid.ColumnSpan="2" Orientation="Both" HorizontalScrollBarVisibility="Default" VerticalScrollBarVisibility="Default">
             <Grid x:Name="grid" HorizontalOptions="Start" VerticalOptions="Start">

@@ -27,7 +27,6 @@ namespace LogicalSpreadSheet
         }
         private SpreadsheetData fileData = new SpreadsheetData();
         private bool displayValues = false;
-        private string fileOpened = "";
         const int MaxCountColumn = 24;
         const int MaxCountRow = 24;
         private bool CircRefTest(string curCell, string Formula)
@@ -132,7 +131,7 @@ namespace LogicalSpreadSheet
         {
             for (int col = 0; col < fileData.CountColumn + 1; col++)
             {
-                grid.ColumnDefinitions.Add(new ColumnDefinition());
+                grid.ColumnDefinitions.Add(new ColumnDefinition{ Width = GridLength.Auto });
                 if (col > 0)
                 {
                     var label = new Label
@@ -155,7 +154,7 @@ namespace LogicalSpreadSheet
             }
             for (int row = 0; row < fileData.CountRow; row++)
             {
-                grid.RowDefinitions.Add(new RowDefinition());
+                grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto } );
                 var label = new Label
                 {
                     Text = (row + 1).ToString(),
@@ -172,7 +171,7 @@ namespace LogicalSpreadSheet
                     {
                         Text = "",
                         VerticalOptions = LayoutOptions.Center,
-                        HorizontalOptions = LayoutOptions.Center
+                        HorizontalOptions = LayoutOptions.Fill
                     };
                     entry.Unfocused += Entry_Unfocused;
                     Grid.SetRow(entry, row + 1);
@@ -232,7 +231,7 @@ namespace LogicalSpreadSheet
                     int col = Grid.GetColumn(entry) - 1;
                     var cellRef = $"{GetColumnName(col + 1)}{row + 1}";
 
-                    if (!displayValues)
+                    if (displayValues)
                     {
                         entry.Text = fileData.values.TryGetValue(cellRef, out int val) ? val.ToString() : "";
                         
@@ -333,7 +332,7 @@ namespace LogicalSpreadSheet
 
                         fileData.CountRow = data.CountRow;
                         fileData.CountColumn = data.CountColumn;
-                        AddRowsAndCellEntries();
+                        CreateGrid();
 
                         fileData.expressions = data.expressions ?? new();
                         fileData.values = data.values ?? new();
@@ -352,6 +351,7 @@ namespace LogicalSpreadSheet
                                 {
                                     entry.Text = formula;
                                 }
+                                entry.IsReadOnly = false;
                             }
                         }
 
@@ -387,7 +387,7 @@ namespace LogicalSpreadSheet
         }
         private void DeleteRowButton_Clicked(object sender, EventArgs e)
         {
-            if (grid.RowDefinitions.Count > 1)
+            if (grid.RowDefinitions.Count > 2)
             {
                 int lastRowIndex = grid.RowDefinitions.Count - 1;
                 var deletedCells = grid.Children
@@ -409,7 +409,7 @@ namespace LogicalSpreadSheet
         }
         private void DeleteColumnButton_Clicked(object sender, EventArgs e)
         {
-            if (grid.ColumnDefinitions.Count > 1)
+            if (grid.ColumnDefinitions.Count > 2)
             {
                 int lastColumnIndex = grid.ColumnDefinitions.Count - 1;
                 var deletedCells = grid.Children
